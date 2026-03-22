@@ -57,6 +57,9 @@ public class BoardController : MonoBehaviour
 
     private Func<List<NormalItem>> m_getItemsStrategy;
 
+    private bool m_isTimerMode = false;
+
+
     public Board GetBoard()
     {
         return m_board;
@@ -76,7 +79,9 @@ public class BoardController : MonoBehaviour
         m_levelMode = levelMode;
 
         m_autoPlayMovesCooldown = m_gameSettings.LevelAutoPlayTimer;
+
         Fill();
+
         switch (m_levelMode)
         {
             case eLevelMode.AUTO_PLAY:
@@ -87,6 +92,9 @@ public class BoardController : MonoBehaviour
             case eLevelMode.AUTO_LOSE:
                 m_playUntilLose = true;
                 m_getItemsStrategy = () => m_board.GetRandomItem();
+                break;
+            case eLevelMode.TIMER:
+                m_isTimerMode =true;
                 break;
         }
 
@@ -108,10 +116,13 @@ public class BoardController : MonoBehaviour
                 IsBusy = true;
                 break;
             case GameManager.eStateGame.GAME_OVER:
-                m_gameOver = true;
                 BottomBar.Instance.ClearListData();
+                m_itemList.Clear();
+                m_getItemsStrategy = null;
+                m_gameOver = true;         
                 m_isAutoPlaying = false;
                 m_playUntilWin = false;
+                m_isTimerMode=false;
                 break;
         }
     }
@@ -124,29 +135,24 @@ public class BoardController : MonoBehaviour
             HandleAutoPlay();
             return;
         }
-        else
-        {
-            if (m_gameOver) return;
-            if (IsBusy) return;
-            else
-            {
-                HandleInput();
-            }
-        }
+
+        if (m_gameOver || IsBusy) return;
+
+        HandleInput();
     }
 
     private void HandleInput()
     {
-        if (Input.GetMouseButtonDown(0) && !m_isClicking)
+        if (Input.GetMouseButtonDown(0))
         {
-            m_clickTimer += Time.deltaTime;
-            m_isClicking = true;
-            var hit = Physics2D.Raycast(m_cam.ScreenToWorldPoint(Input.mousePosition), Vector2.zero);
+            var hit = Physics2D.Raycast(
+                m_cam.ScreenToWorldPoint(Input.mousePosition),
+                Vector2.zero
+            );
 
             if (hit.collider != null)
             {
                 Cell cell = hit.collider.GetComponent<Cell>();
-                if (cell == null) Debug.Log("cell is null");
                 if (cell != null && !cell.IsEmpty)
                 {
                     OnCellClicked(cell);
@@ -161,11 +167,18 @@ public class BoardController : MonoBehaviour
     }
     private void HandleAutoPlay()
     {
+       // if (IsBusy) return;
+
         if (!m_isAutoPlaying)
             StartAutoPlay();
-
         if (m_itemList == null || m_itemList.Count == 0)
-            return;
+        {
+            m_itemList = m_getItemsStrategy?.Invoke();
+            m_currentAutoIndex = 0;
+
+            if (m_itemList == null || m_itemList.Count == 0)
+                return;
+        }
 
         if (m_autoplayTimer >= m_autoPlayMovesCooldown)
         {
@@ -174,16 +187,20 @@ public class BoardController : MonoBehaviour
             if (m_currentAutoIndex >= m_itemList.Count)
             {
                 m_currentAutoIndex = 0;
-                m_itemList = m_getItemsStrategy?.Invoke();
             }
+
+            if (m_currentAutoIndex < 0 || m_currentAutoIndex >= m_itemList.Count)
+                return;
 
             NormalItem nextItem = m_itemList[m_currentAutoIndex];
 
-            if (nextItem != null && nextItem.Cell != null)
+            if (nextItem == null || nextItem.Cell == null || nextItem.Cell.IsEmpty)
             {
-                OnCellClicked(nextItem.Cell);
+                m_currentAutoIndex++;
+                return;
             }
 
+            OnCellClicked(nextItem.Cell);
             m_currentAutoIndex++;
         }
         else
@@ -195,7 +212,7 @@ public class BoardController : MonoBehaviour
     public void StartAutoPlay()
     {
         m_isAutoPlaying = true;
-        m_itemList = m_getItemsStrategy?.Invoke();
+        m_itemList = m_getItemsStrategy?.Invoke() ?? new List<NormalItem>();
         m_currentAutoIndex = 0;
         m_autoplayTimer = 0f;
     }
@@ -209,35 +226,43 @@ public class BoardController : MonoBehaviour
 
     void OnCellClicked(Cell cell)
     {
+       // if (IsBusy) return;
         if (!cell.IsClickable) return;
-
         NormalItem normalItem = cell.Item as NormalItem;
         if (normalItem == null) return;
-
         if (BottomBar.Instance.IsFull()) return;
-
+       // IsBusy = true;
         cell.IsClickable = false;
         var item = cell.Item;
         BottomBar.Instance.AddItem(normalItem);
-        item.SetSortingLayerHigher();
+
+        if (item != null)
+            item.SetSortingLayerHigher();
 
         var seq = m_board.MoveItemToHotBar();
+
         seq.OnComplete(() =>
         {
             BottomBar.Instance.CheckMatchAndCollapse();
-            m_board.MoveAllItemToCorrectSlots();
-            if (item != null)
+            if (item != null && item.View != null)
+            {
                 item.SetSortingLayerLower();
+            }
+
             cell.Free();
-            //lost
+
+            // lose
             if (BottomBar.Instance.IsFull())
             {
                 m_gameManager.SetState(GameManager.eStateGame.GAME_OVER);
             }
+            // win
             else if (m_board.IsBoardEmpty())
             {
                 m_gameManager.SetState(GameManager.eStateGame.GAME_WIN);
             }
+
+           // IsBusy = false;
         });
     }
     private void FindMatchesAndCollapse(Cell cell1, Cell cell2)
@@ -405,5 +430,11 @@ public class BoardController : MonoBehaviour
         }
 
         m_potentialMatch.Clear();
+    }
+
+    void OnDestroy()
+    {
+        if (m_gameManager != null)
+            m_gameManager.StateChangedAction -= OnGameStateChange;
     }
 }

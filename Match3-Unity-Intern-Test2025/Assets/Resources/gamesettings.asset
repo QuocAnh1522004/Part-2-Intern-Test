@@ -17,5 +17,5 @@ MonoBehaviour:
   MatchesMin: 3
   LevelMoves: 16
   LevelTime: 60
-  LevelAutoPlayTimer: 3
+  LevelAutoPlayTimer: 0.5
   TimeForHint: 5
