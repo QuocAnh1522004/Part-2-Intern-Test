@@ -118,6 +118,7 @@ public class BottomBar : MonoBehaviour
                     m_slots[i + k].ExplodeView(); 
                 }
                 m_slots.RemoveRange(i, 3);
+               
                 return;
             }
         }

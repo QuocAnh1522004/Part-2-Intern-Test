@@ -29,7 +29,7 @@ public class LevelMoves : LevelCondition
 
         m_moves--;
 
-        UpdateText();
+        //UpdateText();
 
         if(m_moves <= 0)
         {

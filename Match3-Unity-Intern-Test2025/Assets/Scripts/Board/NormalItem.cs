@@ -52,7 +52,26 @@ public class NormalItem : Item
 
         return prefabname;
     }
+    public override void SetView()
+    {
+        string prefabname = GetPrefabName();
 
+        if (!string.IsNullOrEmpty(prefabname))
+        {
+            GameObject prefab = Resources.Load<GameObject>(prefabname);
+            if (prefab)
+            {
+                GameObject go = GameObject.Instantiate(prefab);
+                View = go.transform;
+
+                ItemView viewComp = go.GetComponent<ItemView>();
+                if (viewComp == null)
+                    viewComp = go.AddComponent<ItemView>();
+
+                viewComp.item = this;
+            }
+        }
+    }
     internal override bool IsSameType(Item other)
     {
         NormalItem it = other as NormalItem;

@@ -28,6 +28,11 @@ public class LevelCondition : MonoBehaviour
         m_txt = txt;
     }
 
+    public virtual void Setup(string setupString , Text txt, BoardController board)
+    {
+        m_txt = txt;
+    }
+
     protected virtual void UpdateText() { }
 
     protected void OnConditionComplete()

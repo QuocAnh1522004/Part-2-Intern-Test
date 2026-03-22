@@ -146,21 +146,24 @@ public class BoardController : MonoBehaviour
     {
         if (Input.GetMouseButtonDown(0))
         {
-            if (m_isTimerMode)
-            {
+            Vector2 worldPos = m_cam.ScreenToWorldPoint(Input.mousePosition);
+            Collider2D hit = Physics2D.OverlapPoint(worldPos);
 
-            }
-            var hit = Physics2D.Raycast(
-                m_cam.ScreenToWorldPoint(Input.mousePosition),
-                Vector2.zero
-            );
-
-            if (hit.collider != null)
+            if (hit != null)
             {
-                Cell cell = hit.collider.GetComponent<Cell>();
+                ItemView itemView = hit.GetComponent<ItemView>();
+                if (itemView != null)
+                {
+                    OnItemClicked(itemView.item);
+                    Debug.Log("Item view");
+                    return;
+                }
+
+                Cell cell = hit.GetComponent<Cell>();
                 if (cell != null && !cell.IsEmpty)
                 {
                     OnCellClicked(cell);
+                    Debug.Log("Cell");
                 }
             }
         }
@@ -168,6 +171,20 @@ public class BoardController : MonoBehaviour
         if (Input.GetMouseButtonUp(0))
         {
             ResetRayCast();
+        }
+    }
+
+    private void OnItemClicked(Item item)
+    {
+        if (!m_isTimerMode) return;
+
+        NormalItem normal = item as NormalItem;
+        if (normal == null) return;
+
+        // Only allow if item is in hotbar
+        if (BottomBar.Instance.GetListData().Contains(item))
+        {
+            ReturnItemToBoard(normal);
         }
     }
     private void HandleAutoPlay()
@@ -234,7 +251,7 @@ public class BoardController : MonoBehaviour
         if (!cell.IsClickable) return;
         NormalItem normalItem = cell.Item as NormalItem;
         if (normalItem == null) return;
-        if (BottomBar.Instance.IsFull()) return;
+        if (!m_isTimerMode && BottomBar.Instance.IsFull()) return;
        // IsBusy = true;
         cell.IsClickable = false;
         var item = cell.Item;
@@ -252,7 +269,10 @@ public class BoardController : MonoBehaviour
             {
                 item.SetSortingLayerLower();
             }
-
+            if (m_isTimerMode)
+            {
+                AddColliderToItem(item);
+            }
             cell.Free();
 
             // lose
@@ -265,11 +285,32 @@ public class BoardController : MonoBehaviour
             {
                 m_gameManager.SetState(GameManager.eStateGame.GAME_WIN);
             }
-
-           // IsBusy = false;
+            m_board.MoveAllItemToCorrectSlots();          
+            // IsBusy = false;
         });
     }
+    void AddColliderToItem(Item item)
+    {
+        if (item.View == null) return;
 
+        var col = item.View.GetComponent<BoxCollider2D>();
+        if (col == null)
+        {
+            col = item.View.gameObject.AddComponent<BoxCollider2D>();
+        }
+
+        col.size = new Vector2(1f, 1f);
+        col.offset = Vector2.zero;
+    }
+
+    void RemoveColliderFromItem(Item item)
+    {
+        var col = item.View?.GetComponent<BoxCollider2D>();
+        if (col != null)
+        {
+            GameObject.Destroy(col);
+        }
+    }
     public void ReturnItemToBoard(NormalItem item)
     {
         if (item == null) return;
@@ -277,11 +318,20 @@ public class BoardController : MonoBehaviour
         Cell emptyCell = GetFirstEmptyCell();
         if (emptyCell == null) return;
 
+        // 🔥 CRITICAL: stop any animation first
+        if (item.View != null)
+            item.View.DOKill(true);
+
         BottomBar.Instance.RemoveItem(item);
 
         emptyCell.Assign(item);
         item.SetViewRoot(transform);
+
+        // force correct position immediately
+        item.SetViewPosition(emptyCell.transform.position);
+        item.Cell.IsClickable = true;
         emptyCell.ApplyItemPosition(true);
+        RemoveColliderFromItem(item);
     }
 
     private Cell GetFirstEmptyCell()

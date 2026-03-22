@@ -10,7 +10,7 @@ public class Item
 {
     public Cell Cell { get; private set; }
 
-    public Transform View { get; private set; }
+    public Transform View;
 
 
     public virtual void SetView()

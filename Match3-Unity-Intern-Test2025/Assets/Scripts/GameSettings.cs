@@ -17,4 +17,6 @@ public class GameSettings : ScriptableObject
     public float LevelAutoPlayTimer = 0.5f;
 
     public float TimeForHint = 5f;
+
+    public string EmptyString = string.Empty;
 }
