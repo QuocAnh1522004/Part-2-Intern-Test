@@ -169,25 +169,46 @@ public class Board
 
     }
 
-    public Item GetRandomItem()
+    public List<NormalItem> GetRandomItem()
     {
-        List<Item> items = new List<Item>();
+        List<NormalItem> items = new List<NormalItem>();
 
         for (int x = 0; x < boardSizeX; x++)
         {
             for (int y = 0; y < boardSizeY; y++)
             {
-                if (!m_cells[x, y].IsEmpty && m_cells[x, y].Item != null)
+                if (!m_cells[x, y].IsEmpty && m_cells[x, y].Item is NormalItem normal)
                 {
-                    items.Add(m_cells[x, y].Item);
+                    items.Add(normal);
                 }
             }
         }
 
-        if (items.Count == 0) return null; 
+        // Group by type
+        var groups = items
+            .GroupBy(i => i.ItemType)
+            .Select(g => g.OrderBy(x => UnityEngine.Random.value).ToList())
+            .ToList();
 
-        int index = UnityEngine.Random.Range(0, items.Count);
-        return items[index];
+        //Shuffle group order
+        groups = groups.OrderBy(x => UnityEngine.Random.value).ToList();
+
+        //Interleave (take 1 from each group repeatedly)
+        List<NormalItem> result = new List<NormalItem>();
+
+        while (groups.Any(g => g.Count > 0))
+        {
+            foreach (var group in groups)
+            {
+                if (group.Count > 0)
+                {
+                    result.Add(group[0]);
+                    group.RemoveAt(0);
+                }
+            }
+        }
+
+        return result;
     }
 
     public List<NormalItem> GetSortedItems()

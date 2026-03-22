@@ -51,9 +51,9 @@ public class BoardController : MonoBehaviour
 
     private int m_currentAutoIndex = 0;
 
-    private List<NormalItem> m_ItemsList = new List<NormalItem>();
-
     private bool m_isAutoPlaying = false;
+
+    private List<NormalItem> m_itemList = new List<NormalItem>();
 
     private Func<List<NormalItem>> m_getItemsStrategy;
 
@@ -81,11 +81,12 @@ public class BoardController : MonoBehaviour
         {
             case eLevelMode.AUTO_PLAY:
                 m_playUntilWin = true;
+                m_getItemsStrategy = () => m_board.GetSortedItems();
                 break;
+
             case eLevelMode.AUTO_LOSE:
                 m_playUntilLose = true;
-                break;
-            default:
+                m_getItemsStrategy = () => m_board.GetRandomItem();
                 break;
         }
 
@@ -118,39 +119,10 @@ public class BoardController : MonoBehaviour
 
     public void Update()
     {
-        if (m_playUntilWin)
+        if (m_playUntilWin || m_playUntilLose)
         {
-           if(!m_isAutoPlaying) StartAutoPlay();
-            if (m_ItemsList == null || m_ItemsList.Count == 0)
-                return;
-            if (m_autoplayTimer >= m_autoPlayMovesCooldown)
-            {
-                m_autoplayTimer = 0f;
-                if (m_currentAutoIndex >= m_ItemsList.Count)
-                {
-                    m_currentAutoIndex = 0;
-                    m_ItemsList = m_board.GetSortedItems();
-                }
-                NormalItem nextItem = m_ItemsList[m_currentAutoIndex];
-                OnCellClicked(nextItem.Cell);
-                m_currentAutoIndex++;
-            }
-            else
-            {
-                m_autoplayTimer += Time.deltaTime;
-            }
-
-        }
-        else if (m_playUntilLose)
-        {
-            if (m_autoplayTimer > m_autoPlayMovesCooldown)
-            {
-
-            }
-            else
-            {
-                m_autoplayTimer += Time.deltaTime;
-            }
+            HandleAutoPlay();
+            return;
         }
         else
         {
@@ -158,37 +130,72 @@ public class BoardController : MonoBehaviour
             if (IsBusy) return;
             else
             {
-                if (Input.GetMouseButtonDown(0) && !m_isClicking)
-                {
-                    m_clickTimer += Time.deltaTime;
-                    m_isClicking = true;
-                    var hit = Physics2D.Raycast(m_cam.ScreenToWorldPoint(Input.mousePosition), Vector2.zero);
+                HandleInput();
+            }
+        }
+    }
 
-                    if (hit.collider != null)
-                    {
-                        Cell cell = hit.collider.GetComponent<Cell>();
-                        if (cell == null) Debug.Log("cell is null");
-                        if (cell != null && !cell.IsEmpty)
-                        {
-                            OnCellClicked(cell);
-                        }
-                    }
-                }
+    private void HandleInput()
+    {
+        if (Input.GetMouseButtonDown(0) && !m_isClicking)
+        {
+            m_clickTimer += Time.deltaTime;
+            m_isClicking = true;
+            var hit = Physics2D.Raycast(m_cam.ScreenToWorldPoint(Input.mousePosition), Vector2.zero);
 
-                if (Input.GetMouseButtonUp(0))
+            if (hit.collider != null)
+            {
+                Cell cell = hit.collider.GetComponent<Cell>();
+                if (cell == null) Debug.Log("cell is null");
+                if (cell != null && !cell.IsEmpty)
                 {
-                    ResetRayCast();
+                    OnCellClicked(cell);
                 }
             }
         }
 
+        if (Input.GetMouseButtonUp(0))
+        {
+            ResetRayCast();
+        }
+    }
+    private void HandleAutoPlay()
+    {
+        if (!m_isAutoPlaying)
+            StartAutoPlay();
 
+        if (m_itemList == null || m_itemList.Count == 0)
+            return;
+
+        if (m_autoplayTimer >= m_autoPlayMovesCooldown)
+        {
+            m_autoplayTimer = 0f;
+
+            if (m_currentAutoIndex >= m_itemList.Count)
+            {
+                m_currentAutoIndex = 0;
+                m_itemList = m_getItemsStrategy?.Invoke();
+            }
+
+            NormalItem nextItem = m_itemList[m_currentAutoIndex];
+
+            if (nextItem != null && nextItem.Cell != null)
+            {
+                OnCellClicked(nextItem.Cell);
+            }
+
+            m_currentAutoIndex++;
+        }
+        else
+        {
+            m_autoplayTimer += Time.deltaTime;
+        }
     }
 
     public void StartAutoPlay()
     {
         m_isAutoPlaying = true;
-        m_ItemsList = m_board.GetSortedItems();
+        m_itemList = m_getItemsStrategy?.Invoke();
         m_currentAutoIndex = 0;
         m_autoplayTimer = 0f;
     }
