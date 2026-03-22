@@ -92,7 +92,7 @@ public class GameManager : MonoBehaviour
         if (mode == eLevelMode.MOVES)
         {                 
             m_levelCondition = this.gameObject.AddComponent<LevelMoves>();
-            m_levelCondition.Setup(m_gameSettings.LevelMoves, m_uiMenu.GetLevelConditionView(), m_boardController);
+            m_levelCondition.Setup(m_gameSettings.NormalLevelString, m_uiMenu.GetLevelConditionView(), m_boardController);
         }
         else if (mode == eLevelMode.TIMER)
         {
@@ -102,12 +102,12 @@ public class GameManager : MonoBehaviour
         else if (mode == eLevelMode.AUTO_PLAY)
         {
             m_levelCondition = this.gameObject.AddComponent<LevelAutoPlay>();
-            m_levelCondition.Setup(m_boardController);
+            m_levelCondition.Setup(m_gameSettings.AutoPlayLevelString, m_uiMenu.GetLevelConditionView(), m_boardController);
         }
         else if (mode == eLevelMode.AUTO_LOSE)
         {
             m_levelCondition = this.gameObject.AddComponent<LevelAutoLose>();
-            m_levelCondition.Setup(m_boardController);
+            m_levelCondition.Setup(m_gameSettings.AutoLoseLevelString, m_uiMenu.GetLevelConditionView(), m_boardController);
         }
         m_levelCondition.ConditionCompleteEvent += GameOver;
 

@@ -5,29 +5,17 @@ using UnityEngine.UI;
 
 public class LevelAutoLose : LevelCondition
 {
-    private BoardController m_boardController;
-
-    public override void Setup(BoardController board)
+    private string m_setupString;
+    public override void Setup(string setupString, Text txt, BoardController board)
     {
+        base.Setup(setupString, txt);
 
-        m_boardController = board;
+        m_setupString = setupString;
 
-        m_boardController.OnMoveEvent += OnMove;
+        UpdateText();
     }
-
-    private void OnMove()
+    protected override void UpdateText()
     {
-        if (m_conditionCompleted) return;
-        if (m_boardController.GetBoard().IsBoardEmpty())
-        {
-            OnConditionComplete();
-        }
-    }
-
-    protected override void OnDestroy()
-    {
-        if (m_boardController != null) m_boardController.OnMoveEvent -= OnMove;
-
-        base.OnDestroy();
+        m_txt.text = string.Format(m_setupString);
     }
 }

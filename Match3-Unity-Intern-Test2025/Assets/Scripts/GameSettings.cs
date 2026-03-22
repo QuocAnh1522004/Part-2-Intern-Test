@@ -18,5 +18,8 @@ public class GameSettings : ScriptableObject
 
     public float TimeForHint = 5f;
 
-    public string EmptyString = string.Empty;
+    public string AutoPlayLevelString = "Auto Play";
+    public string AutoLoseLevelString = "Auto Lose";
+    public string NormalLevelString = "Normal Mode";
+
 }
