@@ -155,7 +155,6 @@ public class BoardController : MonoBehaviour
                 if (itemView != null)
                 {
                     OnItemClicked(itemView.item);
-                    Debug.Log("Item view");
                     return;
                 }
 
@@ -163,7 +162,6 @@ public class BoardController : MonoBehaviour
                 if (cell != null && !cell.IsEmpty)
                 {
                     OnCellClicked(cell);
-                    Debug.Log("Cell");
                 }
             }
         }
