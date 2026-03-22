@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using static GameManager;
+using static NormalItem;
 
 public class BoardController : MonoBehaviour
 {
@@ -45,7 +46,16 @@ public class BoardController : MonoBehaviour
     private float m_autoPlayMovesCooldown;
 
     private float m_autoplayTimer = 999f;
-    
+
+    private eNormalType m_selectedType;
+
+    private int m_currentAutoIndex = 0;
+
+    private List<NormalItem> m_ItemsList = new List<NormalItem>();
+
+    private bool m_isAutoPlaying = false;
+
+    private Func<List<NormalItem>> m_getItemsStrategy;
 
     public Board GetBoard()
     {
@@ -75,10 +85,10 @@ public class BoardController : MonoBehaviour
             case eLevelMode.AUTO_LOSE:
                 m_playUntilLose = true;
                 break;
-            default: 
+            default:
                 break;
         }
-         
+
     }
     private void Fill()
     {
@@ -99,6 +109,8 @@ public class BoardController : MonoBehaviour
             case GameManager.eStateGame.GAME_OVER:
                 m_gameOver = true;
                 BottomBar.Instance.ClearListData();
+                m_isAutoPlaying = false;
+                m_playUntilWin = false;
                 break;
         }
     }
@@ -106,25 +118,39 @@ public class BoardController : MonoBehaviour
 
     public void Update()
     {
-        if(m_playUntilWin)
+        if (m_playUntilWin)
         {
+           if(!m_isAutoPlaying) StartAutoPlay();
+            if (m_ItemsList == null || m_ItemsList.Count == 0)
+                return;
+            if (m_autoplayTimer >= m_autoPlayMovesCooldown)
+            {
+                m_autoplayTimer = 0f;
+                if (m_currentAutoIndex >= m_ItemsList.Count)
+                {
+                    m_currentAutoIndex = 0;
+                    m_ItemsList = m_board.GetSortedItems();
+                }
+                NormalItem nextItem = m_ItemsList[m_currentAutoIndex];
+                OnCellClicked(nextItem.Cell);
+                m_currentAutoIndex++;
+            }
+            else
+            {
+                m_autoplayTimer += Time.deltaTime;
+            }
 
+        }
+        else if (m_playUntilLose)
+        {
             if (m_autoplayTimer > m_autoPlayMovesCooldown)
             {
-                var randomItem = m_board.GetRandomItem();
-                OnCellClicked(randomItem.Cell);
-                m_autoplayTimer = 0;
 
             }
             else
             {
                 m_autoplayTimer += Time.deltaTime;
             }
-            
-        }
-        else if (m_playUntilLose)
-        {
-
         }
         else
         {
@@ -155,14 +181,21 @@ public class BoardController : MonoBehaviour
                 }
             }
         }
-      
-        
+
+
     }
 
+    public void StartAutoPlay()
+    {
+        m_isAutoPlaying = true;
+        m_ItemsList = m_board.GetSortedItems();
+        m_currentAutoIndex = 0;
+        m_autoplayTimer = 0f;
+    }
 
     private void ResetRayCast()
     {
-     //   m_isDragging = false;
+        //   m_isDragging = false;
         m_hitCollider = null;
         m_isClicking = false;
     }
@@ -170,18 +203,18 @@ public class BoardController : MonoBehaviour
     void OnCellClicked(Cell cell)
     {
         if (!cell.IsClickable) return;
+
         NormalItem normalItem = cell.Item as NormalItem;
         if (normalItem == null) return;
+
         if (BottomBar.Instance.IsFull()) return;
+
         cell.IsClickable = false;
-
         var item = cell.Item;
-
         BottomBar.Instance.AddItem(normalItem);
         item.SetSortingLayerHigher();
 
         var seq = m_board.MoveItemToHotBar();
-
         seq.OnComplete(() =>
         {
             BottomBar.Instance.CheckMatchAndCollapse();
@@ -287,7 +320,7 @@ public class BoardController : MonoBehaviour
             matches[i].ExplodeItem();
         }
 
-        if(matches.Count > m_gameSettings.MatchesMin)
+        if (matches.Count > m_gameSettings.MatchesMin)
         {
             m_board.ConvertNormalToBonus(matches, cellEnd);
         }

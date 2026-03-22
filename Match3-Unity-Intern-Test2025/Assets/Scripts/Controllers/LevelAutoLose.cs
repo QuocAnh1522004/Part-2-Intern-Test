@@ -5,41 +5,29 @@ using UnityEngine.UI;
 
 public class LevelAutoLose : LevelCondition
 {
-    private float m_time;
+    private BoardController m_boardController;
 
-    private GameManager m_mngr;
-
-    public override void Setup(float value, Text txt, GameManager mngr)
+    public override void Setup(BoardController board)
     {
-        base.Setup(value, txt, mngr);
 
-        m_mngr = mngr;
+        m_boardController = board;
 
-        m_time = value;
-
-        UpdateText();
+        m_boardController.OnMoveEvent += OnMove;
     }
 
-    private void Update()
+    private void OnMove()
     {
         if (m_conditionCompleted) return;
-
-        if (m_mngr.State != GameManager.eStateGame.GAME_STARTED) return;
-
-        m_time -= Time.deltaTime;
-
-        UpdateText();
-
-        if (m_time <= -1f)
+        if (m_boardController.GetBoard().IsBoardEmpty())
         {
             OnConditionComplete();
         }
     }
 
-    protected override void UpdateText()
+    protected override void OnDestroy()
     {
-        if (m_time < 0f) return;
+        if (m_boardController != null) m_boardController.OnMoveEvent -= OnMove;
 
-        m_txt.text = string.Format("TIME:\n{0:00}", m_time);
+        base.OnDestroy();
     }
 }

@@ -190,6 +190,32 @@ public class Board
         return items[index];
     }
 
+    public List<NormalItem> GetSortedItems()
+    {
+        List<NormalItem> items = new List<NormalItem>();
+
+        for (int x = 0; x < boardSizeX; x++)
+        {
+            for (int y = 0; y < boardSizeY; y++)
+            {
+                if (!m_cells[x, y].IsEmpty && m_cells[x, y].Item != null)
+                {
+                    NormalItem normalItem = m_cells[x, y].Item as NormalItem;
+
+                    if (normalItem != null)
+                    {
+                        items.Add(normalItem);
+                    }
+                }
+            }
+        }
+
+        // Sort by enum value (TYPE_ONE -> TYPE_SEVEN)
+        items.Sort((a, b) => a.ItemType.CompareTo(b.ItemType));
+
+        return items;
+    }
+
     internal void FillBoard()
     {
         int index = 0;
