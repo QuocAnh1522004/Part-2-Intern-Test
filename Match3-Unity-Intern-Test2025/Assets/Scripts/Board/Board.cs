@@ -358,7 +358,7 @@ public class Board
             item.View.DOKill();
 
             seq.Join(
-                item.View.DOMove(target.position, 0.25f)
+                item.View.DOMove(target.position, 0.2f)
 
             );
         }

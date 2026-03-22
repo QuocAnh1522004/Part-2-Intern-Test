@@ -176,6 +176,7 @@ public class BoardController : MonoBehaviour
 
     private void OnItemClicked(Item item)
     {
+        if (IsBusy) return;
         if (!m_isTimerMode) return;
 
         NormalItem normal = item as NormalItem;
@@ -247,7 +248,8 @@ public class BoardController : MonoBehaviour
 
     void OnCellClicked(Cell cell)
     {
-       // if (IsBusy) return;
+        if (IsBusy) return;
+        IsBusy = true;
         if (!cell.IsClickable) return;
         NormalItem normalItem = cell.Item as NormalItem;
         if (normalItem == null) return;
@@ -286,7 +288,7 @@ public class BoardController : MonoBehaviour
                 m_gameManager.SetState(GameManager.eStateGame.GAME_WIN);
             }
             m_board.MoveAllItemToCorrectSlots();          
-            // IsBusy = false;
+             IsBusy = false;
         });
     }
     void AddColliderToItem(Item item)
@@ -313,25 +315,31 @@ public class BoardController : MonoBehaviour
     }
     public void ReturnItemToBoard(NormalItem item)
     {
-        if (item == null) return;
+        if (item == null || IsBusy) return;
 
         Cell emptyCell = GetFirstEmptyCell();
         if (emptyCell == null) return;
 
-        // 🔥 CRITICAL: stop any animation first
+        IsBusy = true;
+
         if (item.View != null)
+        {
             item.View.DOKill(true);
+        }
 
         BottomBar.Instance.RemoveItem(item);
 
         emptyCell.Assign(item);
         item.SetViewRoot(transform);
 
-        // force correct position immediately
         item.SetViewPosition(emptyCell.transform.position);
+
         item.Cell.IsClickable = true;
-        emptyCell.ApplyItemPosition(true);
+
         RemoveColliderFromItem(item);
+        m_board.MoveAllItemToCorrectSlots();
+
+        IsBusy = false;
     }
 
     private Cell GetFirstEmptyCell()
