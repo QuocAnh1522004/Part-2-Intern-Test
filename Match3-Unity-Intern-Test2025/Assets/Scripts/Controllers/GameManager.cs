@@ -11,7 +11,9 @@ public class GameManager : MonoBehaviour
     public enum eLevelMode
     {
         TIMER,
-        MOVES
+        MOVES,
+        AUTO_PLAY,
+        AUTO_LOSE
     }
 
     public enum eStateGame
@@ -21,6 +23,7 @@ public class GameManager : MonoBehaviour
         GAME_STARTED,
         PAUSE,
         GAME_OVER,
+        GAME_WIN
     }
 
     private eStateGame m_state;
@@ -84,19 +87,28 @@ public class GameManager : MonoBehaviour
     public void LoadLevel(eLevelMode mode)
     {
         m_boardController = new GameObject("BoardController").AddComponent<BoardController>();
-        m_boardController.StartGame(this, m_gameSettings);
-
+        m_boardController.StartGame(this, m_gameSettings, mode);
+        Destroy(this.gameObject.GetComponent<LevelCondition>());
         if (mode == eLevelMode.MOVES)
-        {
+        {                 
             m_levelCondition = this.gameObject.AddComponent<LevelMoves>();
             m_levelCondition.Setup(m_gameSettings.LevelMoves, m_uiMenu.GetLevelConditionView(), m_boardController);
         }
         else if (mode == eLevelMode.TIMER)
         {
             m_levelCondition = this.gameObject.AddComponent<LevelTime>();
-            m_levelCondition.Setup(m_gameSettings.LevelMoves, m_uiMenu.GetLevelConditionView(), this);
+            m_levelCondition.Setup(m_gameSettings.LevelTime, m_uiMenu.GetLevelConditionView(), this);
         }
-
+        else if (mode == eLevelMode.AUTO_PLAY)
+        {
+            m_levelCondition = this.gameObject.AddComponent<LevelAutoPlay>();
+            m_levelCondition.Setup(m_boardController);
+        }
+        else if (mode == eLevelMode.AUTO_LOSE)
+        {
+            m_levelCondition = this.gameObject.AddComponent<LevelAutoLose>();
+            m_levelCondition.Setup(m_boardController);
+        }
         m_levelCondition.ConditionCompleteEvent += GameOver;
 
         State = eStateGame.GAME_STARTED;

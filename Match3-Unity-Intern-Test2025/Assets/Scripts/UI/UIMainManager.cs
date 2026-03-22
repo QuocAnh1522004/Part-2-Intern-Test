@@ -69,6 +69,9 @@ public class UIMainManager : MonoBehaviour
             case GameManager.eStateGame.GAME_OVER:
                 ShowMenu<UIPanelGameOver>();
                 break;
+            case GameManager.eStateGame.GAME_WIN:
+                ShowMenu<UIPanelGameWin>();
+                break;
         }
     }
 
@@ -107,6 +110,16 @@ public class UIMainManager : MonoBehaviour
     internal void LoadLevelMoves()
     {
         m_gameManager.LoadLevel(GameManager.eLevelMode.MOVES);
+    }
+
+    internal void LoadLevelAutoPlay()
+    {
+        m_gameManager.LoadLevel(GameManager.eLevelMode.AUTO_PLAY);
+    }
+
+    internal void LoadLevelAutoLose()
+    {
+        m_gameManager.LoadLevel(GameManager.eLevelMode.AUTO_LOSE);
     }
 
     internal void LoadLevelTimer()

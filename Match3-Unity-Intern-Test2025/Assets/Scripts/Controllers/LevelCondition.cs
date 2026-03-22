@@ -12,6 +12,7 @@ public class LevelCondition : MonoBehaviour
 
     protected bool m_conditionCompleted = false;
 
+    public virtual void Setup(BoardController board) { }
     public virtual void Setup(float value, Text txt)
     {
         m_txt = txt;

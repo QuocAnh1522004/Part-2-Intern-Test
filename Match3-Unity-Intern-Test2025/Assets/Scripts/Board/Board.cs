@@ -4,7 +4,8 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
-
+using UnityEngine.Analytics;
+using static UnityEngine.UI.Image;
 public class Board
 {
     public enum eMatchDirection
@@ -25,6 +26,9 @@ public class Board
 
     private int m_matchMin;
 
+    private List<NormalItem.eNormalType> randomizedPool;
+
+
     public Board(Transform transform, GameSettings gameSettings)
     {
         m_root = transform;
@@ -37,6 +41,7 @@ public class Board
         m_cells = new Cell[boardSizeX, boardSizeY];
 
         CreateBoard();
+        BuildItemPool();
     }
 
     private void CreateBoard()
@@ -72,6 +77,59 @@ public class Board
 
     }
 
+    void BuildItemPool()
+    {
+        int totalCells = boardSizeX * boardSizeY;
+        if (totalCells % 3 != 0)
+        {
+            Debug.LogError("Board size must be divisible by 3!");
+        }
+        var allTypes = Enum.GetValues(typeof(NormalItem.eNormalType))
+                           .Cast<NormalItem.eNormalType>()
+                           .ToList();
+
+        List<NormalItem.eNormalType> pool = new List<NormalItem.eNormalType>();
+        int remaining = totalCells;
+        // Ensure every type appears at least once (3 times)
+        foreach (var type in allTypes)
+        {
+            pool.Add(type);
+            pool.Add(type);
+            pool.Add(type);
+            remaining -= 3;
+        }
+        // Fill remaining with random types (in groups of 3)
+        while (remaining > 0)
+        {
+            var type = allTypes[UnityEngine.Random.Range(0, allTypes.Count)];
+
+            pool.Add(type);
+            pool.Add(type);
+            pool.Add(type);
+
+            remaining -= 3;
+        }
+        randomizedPool = pool.OrderBy(x => UnityEngine.Random.value).ToList();
+    }
+
+    public bool IsBoardEmpty()
+    {
+        if (m_cells == null) return true;
+
+        for (int x = 0; x < boardSizeX; x++)
+        {
+            for (int y = 0; y < boardSizeY; y++)
+            {
+                if (m_cells[x, y] != null && !m_cells[x, y].IsEmpty)
+                    return false;
+            }
+        }
+
+        return true; 
+    }
+
+
+
     internal void Fill()
     {
         for (int x = 0; x < boardSizeX; x++)
@@ -101,6 +159,49 @@ public class Board
                 }
 
                 item.SetType(Utils.GetRandomNormalTypeExcept(types.ToArray()));
+                item.SetView();
+                item.SetViewRoot(m_root);
+
+                cell.Assign(item);
+                cell.ApplyItemPosition(false);
+            }
+        }
+
+    }
+
+    public Item GetRandomItem()
+    {
+        List<Item> items = new List<Item>();
+
+        for (int x = 0; x < boardSizeX; x++)
+        {
+            for (int y = 0; y < boardSizeY; y++)
+            {
+                if (!m_cells[x, y].IsEmpty && m_cells[x, y].Item != null)
+                {
+                    items.Add(m_cells[x, y].Item);
+                }
+            }
+        }
+
+        if (items.Count == 0) return null; 
+
+        int index = UnityEngine.Random.Range(0, items.Count);
+        return items[index];
+    }
+
+    internal void FillBoard()
+    {
+        int index = 0;
+
+        for (int x = 0; x < boardSizeX; x++)
+        {
+            for (int y = 0; y < boardSizeY; y++)
+            {
+                Cell cell = m_cells[x, y];
+
+                NormalItem item = new NormalItem();
+                item.SetType(randomizedPool[index++]);
                 item.SetView();
                 item.SetViewRoot(m_root);
 
@@ -180,6 +281,40 @@ public class Board
 
         item.View.DOMove(cell2.transform.position, 0.3f);
         item2.View.DOMove(cell1.transform.position, 0.3f).OnComplete(() => { if (callback != null) callback(); });
+    }
+
+    public Sequence MoveItemToHotBar()
+    {
+        var data = new List<Item>(BottomBar.Instance.GetListData());
+
+        Sequence seq = DOTween.Sequence();
+
+        for (int i = 0; i < data.Count; i++)
+        {
+            var item = data[i];
+            Transform target = BottomBar.Instance.SearchForSlotTransform(i);
+
+            if (item?.View == null || target == null) continue;
+
+            item.View.DOKill();
+
+            seq.Join(
+                item.View.DOMove(target.position, 0.35f)
+
+            );
+        }
+
+        return seq;
+    }
+
+    public void MoveAllItemToCorrectSlots()
+    {
+        var data = BottomBar.Instance.GetListData();
+        for (int i = 0; i < data.Count; i++)
+        {
+            Transform target = BottomBar.Instance.SearchForSlotTransform(i);
+            data[i].View.DOMove(target.position, 0.3f);
+        }
     }
 
     public List<Cell> GetHorizontalMatches(Cell cell)
@@ -350,7 +485,7 @@ public class Board
         var dir = GetMatchDirection(matches);
 
         var bonus = matches.Where(x => x.Item is BonusItem).FirstOrDefault();
-        if(bonus == null)
+        if (bonus == null)
         {
             return matches;
         }

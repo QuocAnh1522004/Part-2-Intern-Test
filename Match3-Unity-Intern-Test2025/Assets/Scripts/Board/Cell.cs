@@ -1,6 +1,8 @@
 ﻿using System;
 using UnityEngine;
+using UnityEngine.UIElements;
 
+//data class
 public class Cell : MonoBehaviour
 {
     public int BoardX { get; private set; }
@@ -17,6 +19,7 @@ public class Cell : MonoBehaviour
 
     public Cell NeighbourLeft { get; set; }
 
+    public bool IsClickable = true;
 
     public bool IsEmpty => Item == null;
 

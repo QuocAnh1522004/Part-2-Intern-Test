@@ -4,6 +4,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using static GameManager;
 
 public class BoardController : MonoBehaviour
 {
@@ -31,7 +32,26 @@ public class BoardController : MonoBehaviour
 
     private bool m_gameOver;
 
-    public void StartGame(GameManager gameManager, GameSettings gameSettings)
+    private bool m_isClicking = false;
+
+    private float m_clickTimer = 1f;
+
+    private eLevelMode m_levelMode;
+
+    private bool m_playUntilWin = false;
+
+    private bool m_playUntilLose = false;
+
+    private float m_autoPlayMovesCooldown;
+
+    private float m_autoplayTimer = 999f;
+    
+
+    public Board GetBoard()
+    {
+        return m_board;
+    }
+    public void StartGame(GameManager gameManager, GameSettings gameSettings, eLevelMode levelMode)
     {
         m_gameManager = gameManager;
 
@@ -43,13 +63,27 @@ public class BoardController : MonoBehaviour
 
         m_board = new Board(this.transform, gameSettings);
 
-        Fill();
-    }
+        m_levelMode = levelMode;
 
+        m_autoPlayMovesCooldown = m_gameSettings.LevelAutoPlayTimer;
+        Fill();
+        switch (m_levelMode)
+        {
+            case eLevelMode.AUTO_PLAY:
+                m_playUntilWin = true;
+                break;
+            case eLevelMode.AUTO_LOSE:
+                m_playUntilLose = true;
+                break;
+            default: 
+                break;
+        }
+         
+    }
     private void Fill()
     {
-        m_board.Fill();
-        FindMatchesAndCollapse();
+        m_board.FillBoard();
+        //FindMatchesAndCollapse();
     }
 
     private void OnGameStateChange(GameManager.eStateGame state)
@@ -64,7 +98,7 @@ public class BoardController : MonoBehaviour
                 break;
             case GameManager.eStateGame.GAME_OVER:
                 m_gameOver = true;
-                StopHints();
+                BottomBar.Instance.ClearListData();
                 break;
         }
     }
@@ -72,71 +106,100 @@ public class BoardController : MonoBehaviour
 
     public void Update()
     {
-        if (m_gameOver) return;
-        if (IsBusy) return;
-
-        if (!m_hintIsShown)
+        if(m_playUntilWin)
         {
-            m_timeAfterFill += Time.deltaTime;
-            if (m_timeAfterFill > m_gameSettings.TimeForHint)
+
+            if (m_autoplayTimer > m_autoPlayMovesCooldown)
             {
-                m_timeAfterFill = 0f;
-                ShowHint();
-            }
-        }
+                var randomItem = m_board.GetRandomItem();
+                OnCellClicked(randomItem.Cell);
+                m_autoplayTimer = 0;
 
-        if (Input.GetMouseButtonDown(0))
-        {
-            var hit = Physics2D.Raycast(m_cam.ScreenToWorldPoint(Input.mousePosition), Vector2.zero);
-            if (hit.collider != null)
-            {
-                m_isDragging = true;
-                m_hitCollider = hit.collider;
-            }
-        }
-
-        if (Input.GetMouseButtonUp(0))
-        {
-            ResetRayCast();
-        }
-
-        if (Input.GetMouseButton(0) && m_isDragging)
-        {
-            var hit = Physics2D.Raycast(m_cam.ScreenToWorldPoint(Input.mousePosition), Vector2.zero);
-            if (hit.collider != null)
-            {
-                if (m_hitCollider != null && m_hitCollider != hit.collider)
-                {
-                    StopHints();
-
-                    Cell c1 = m_hitCollider.GetComponent<Cell>();
-                    Cell c2 = hit.collider.GetComponent<Cell>();
-                    if (AreItemsNeighbor(c1, c2))
-                    {
-                        IsBusy = true;
-                        SetSortingLayer(c1, c2);
-                        m_board.Swap(c1, c2, () =>
-                        {
-                            FindMatchesAndCollapse(c1, c2);
-                        });
-
-                        ResetRayCast();
-                    }
-                }
             }
             else
             {
-                ResetRayCast();
+                m_autoplayTimer += Time.deltaTime;
+            }
+            
+        }
+        else if (m_playUntilLose)
+        {
+
+        }
+        else
+        {
+            if (m_gameOver) return;
+            if (IsBusy) return;
+            else
+            {
+                if (Input.GetMouseButtonDown(0) && !m_isClicking)
+                {
+                    m_clickTimer += Time.deltaTime;
+                    m_isClicking = true;
+                    var hit = Physics2D.Raycast(m_cam.ScreenToWorldPoint(Input.mousePosition), Vector2.zero);
+
+                    if (hit.collider != null)
+                    {
+                        Cell cell = hit.collider.GetComponent<Cell>();
+                        if (cell == null) Debug.Log("cell is null");
+                        if (cell != null && !cell.IsEmpty)
+                        {
+                            OnCellClicked(cell);
+                        }
+                    }
+                }
+
+                if (Input.GetMouseButtonUp(0))
+                {
+                    ResetRayCast();
+                }
             }
         }
+      
+        
     }
+
 
     private void ResetRayCast()
     {
-        m_isDragging = false;
+     //   m_isDragging = false;
         m_hitCollider = null;
+        m_isClicking = false;
     }
 
+    void OnCellClicked(Cell cell)
+    {
+        if (!cell.IsClickable) return;
+        NormalItem normalItem = cell.Item as NormalItem;
+        if (normalItem == null) return;
+        if (BottomBar.Instance.IsFull()) return;
+        cell.IsClickable = false;
+
+        var item = cell.Item;
+
+        BottomBar.Instance.AddItem(normalItem);
+        item.SetSortingLayerHigher();
+
+        var seq = m_board.MoveItemToHotBar();
+
+        seq.OnComplete(() =>
+        {
+            BottomBar.Instance.CheckMatchAndCollapse();
+            m_board.MoveAllItemToCorrectSlots();
+            if (item != null)
+                item.SetSortingLayerLower();
+            cell.Free();
+            //lost
+            if (BottomBar.Instance.IsFull())
+            {
+                m_gameManager.SetState(GameManager.eStateGame.GAME_OVER);
+            }
+            else if (m_board.IsBoardEmpty())
+            {
+                m_gameManager.SetState(GameManager.eStateGame.GAME_WIN);
+            }
+        });
+    }
     private void FindMatchesAndCollapse(Cell cell1, Cell cell2)
     {
         if (cell1.Item is BonusItem)

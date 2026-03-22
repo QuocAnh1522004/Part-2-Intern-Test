@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using DG.Tweening;
 
+//View class
 [Serializable]
 public class Item
 {
@@ -98,7 +99,7 @@ public class Item
     {
         if (View)
         {
-            View.DOScale(0.1f, 0.1f).OnComplete(
+            View.DOScale(Vector3.zero, 0.3f).OnComplete(
                 () =>
                 {
                     GameObject.Destroy(View.gameObject);
