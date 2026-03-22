@@ -28,7 +28,15 @@ public class Board
 
     private List<NormalItem.eNormalType> randomizedPool;
 
+    public int GetBoardSizeX()
+    {
+        return boardSizeX;
+    }
 
+    public int GetBoardSizeY()
+    {
+        return boardSizeY;
+    }
     public Board(Transform transform, GameSettings gameSettings)
     {
         m_root = transform;
@@ -44,6 +52,10 @@ public class Board
         BuildItemPool();
     }
 
+    public Cell GetCell(int x,int y)
+    {
+        return m_cells[x, y];
+    }
     private void CreateBoard()
     {
         Vector3 origin = new Vector3(-boardSizeX * 0.5f + 0.5f, -boardSizeY * 0.5f + 0.5f, 0f);

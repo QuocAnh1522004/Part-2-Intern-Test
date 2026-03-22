@@ -95,6 +95,7 @@ public class BoardController : MonoBehaviour
                 break;
             case eLevelMode.TIMER:
                 m_isTimerMode =true;
+
                 break;
         }
 
@@ -145,6 +146,10 @@ public class BoardController : MonoBehaviour
     {
         if (Input.GetMouseButtonDown(0))
         {
+            if (m_isTimerMode)
+            {
+
+            }
             var hit = Physics2D.Raycast(
                 m_cam.ScreenToWorldPoint(Input.mousePosition),
                 Vector2.zero
@@ -167,8 +172,7 @@ public class BoardController : MonoBehaviour
     }
     private void HandleAutoPlay()
     {
-       // if (IsBusy) return;
-
+       // if (IsBusy) return;       
         if (!m_isAutoPlaying)
             StartAutoPlay();
         if (m_itemList == null || m_itemList.Count == 0)
@@ -252,7 +256,7 @@ public class BoardController : MonoBehaviour
             cell.Free();
 
             // lose
-            if (BottomBar.Instance.IsFull())
+            if (!m_isTimerMode && BottomBar.Instance.IsFull())
             {
                 m_gameManager.SetState(GameManager.eStateGame.GAME_OVER);
             }
@@ -265,6 +269,35 @@ public class BoardController : MonoBehaviour
            // IsBusy = false;
         });
     }
+
+    public void ReturnItemToBoard(NormalItem item)
+    {
+        if (item == null) return;
+
+        Cell emptyCell = GetFirstEmptyCell();
+        if (emptyCell == null) return;
+
+        BottomBar.Instance.RemoveItem(item);
+
+        emptyCell.Assign(item);
+        item.SetViewRoot(transform);
+        emptyCell.ApplyItemPosition(true);
+    }
+
+    private Cell GetFirstEmptyCell()
+    {
+        for (int x = 0; x < m_board.GetBoardSizeX(); x++)
+        {
+            for (int y = 0; y < m_board.GetBoardSizeY(); y++)
+            {
+                var cell = m_board.GetCell(x, y);
+                if (cell.IsEmpty)
+                    return cell;
+            }
+        }
+        return null;
+    }
+
     private void FindMatchesAndCollapse(Cell cell1, Cell cell2)
     {
         if (cell1.Item is BonusItem)

@@ -1,3 +1,4 @@
+using DG.Tweening;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -35,6 +36,33 @@ public class BottomBar : MonoBehaviour
         {
             moveToSlotIndex = insertIndex + 1;
             m_slots.Insert(moveToSlotIndex, item);         
+        }
+    }
+
+    public void RemoveItem(NormalItem item)
+    {
+        if (item == null) return;
+
+        int index = m_slots.IndexOf(item);
+        if (index == -1) return;
+        m_slots.RemoveAt(index);
+
+        //if (item.View != null)
+        //{
+        //    item.View.DOKill();
+        //}
+
+        //Re-arrange remaining items visually
+        for (int i = 0; i < m_slots.Count; i++)
+        {
+            var slotItem = m_slots[i];
+            if (slotItem?.View == null) continue;
+
+            Transform target = SearchForSlotTransform(i);
+            if (target != null)
+            {
+                slotItem.View.DOMove(target.position, 0.25f);
+            }
         }
     }
 
